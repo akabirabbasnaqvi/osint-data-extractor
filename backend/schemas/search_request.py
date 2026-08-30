@@ -3,7 +3,9 @@ Validates the body of POST /api/search. Mirrors blueprint Section 6.2:
 all 12 input fields are optional individually, but at least one must be
 filled, and at least one output category must be selected.
 """
+import ipaddress
 from typing import Optional
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, field_validator
 
@@ -21,6 +23,26 @@ class SearchInputs(BaseModel):
     country: Optional[str] = None
     github: Optional[str] = None
     twitter: Optional[str] = None
+
+    @field_validator("linkedin", "facebook", "instagram", "company_website")
+    @classmethod
+    def public_http_urls_only(cls, value: Optional[str]) -> Optional[str]:
+        """Reject malformed or private-network URLs to prevent SSRF."""
+        if not value:
+            return value
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("URL must use http or https and include a hostname")
+        host = parsed.hostname.lower()
+        if host == "localhost" or host.endswith(".local"):
+            raise ValueError("Local network URLs are not allowed")
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            return value
+        if not address.is_global:
+            raise ValueError("Private network URLs are not allowed")
+        return value
 
 
 VALID_OUTPUT_CATEGORIES = {

@@ -5,19 +5,21 @@ DELETE /api/jobs/{job_id}   — delete a job and its results (CASCADE)
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
 from models.job import Job
 from models.result import Result
+from rate_limit import limiter
 from schemas.result_response import JobStatusResponse, JobSummary
 
 router = APIRouter()
 
 
 @router.get("/api/results/{job_id}", response_model=JobStatusResponse)
-def get_results(job_id: UUID, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def get_results(request: Request, job_id: UUID, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -39,7 +41,8 @@ def get_results(job_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/api/jobs", response_model=list[JobSummary])
-def list_jobs(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")
+def list_jobs(request: Request, db: Session = Depends(get_db)):
     jobs = db.query(Job).order_by(Job.created_at.desc()).limit(50).all()
     return [
         JobSummary(
@@ -54,7 +57,8 @@ def list_jobs(db: Session = Depends(get_db)):
 
 
 @router.delete("/api/jobs/{job_id}", status_code=204)
-def delete_job(job_id: UUID, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+def delete_job(request: Request, job_id: UUID, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

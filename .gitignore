@@ -9,6 +9,7 @@ venv/
 # documented template that new contributors need.
 .env*
 !.env.example
+!.env.production.example
 
 # Node / Next.js
 node_modules/
@@ -17,6 +18,9 @@ out/
 
 # Docker
 *.log
+coverage.xml
+.coverage
+htmlcov/
 
 # Editors
 .vscode/

@@ -8,11 +8,11 @@ Reference: `Public Intelligence SaaS_blueprint.pdf` (project blueprint, v1.0).
 
 ## Stack
 
-- **Frontend:** Next.js 14 + Tailwind + shadcn/ui
+- **Frontend:** Next.js 14 + React + TypeScript + Tailwind CSS
 - **Backend API:** FastAPI (Python 3.11.8)
 - **Task Queue:** Celery + Redis
 - **Database:** PostgreSQL 16
-- **Scraping:** Scrapy + Playwright + BeautifulSoup4
+- **Scraping:** requests + Beautiful Soup + lxml + public web APIs
 
 ## Project Status
 
@@ -65,3 +65,59 @@ block/rate-limit automated traffic, so discovery will sometimes come back
 empty or partial — that's expected behavior for free scraping-based search,
 not a bug. GitHub lookups and anything you provide directly (name, LinkedIn
 URL, etc.) always work regardless of whether discovery finds anything.
+
+## API example
+
+```bash
+curl -X POST http://localhost:8000/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"inputs":{"full_name":"Example Person","github":"example"},"retrieve":["github","personal_website"]}'
+```
+
+The response returns a `job_id`. Poll `GET /api/results/{job_id}` until its
+status is `completed` or `failed`.
+
+## Configuration
+
+Copy `.env.example` to `.env`; never commit the real file.
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection used by the API and worker |
+| `REDIS_URL` | Redis connection |
+| `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` | Celery transport and result backend |
+| `HUNTER_IO_API_KEY` | Optional Hunter.io integration key |
+| `SEARXNG_URL` | Internal SearxNG URL; Docker default is correct |
+| `HTTP_PROXY` | Optional outbound proxy |
+| `SECRET_KEY` | Application secret; use a strong, unique value outside development |
+| `ALLOWED_ORIGINS` | Comma-separated frontend origins allowed by CORS |
+
+## Production notes
+
+`docker-compose.yml` is for local development. A production-oriented compose file
+is available as `docker-compose.prod.yml`. Copy `.env.production.example` to
+`.env.production`, replace every placeholder, and use Docker Compose's `--env-file
+.env.production` option. Deploy only behind HTTPS with authentication, appropriate
+rate limits, backups, and a documented data-retention/deletion policy.
+
+## Development and contributing
+
+- Backend test files live in `backend/tests/` and use pytest.
+- GitHub Actions validates Python, Docker Compose, and the frontend build on pushes
+  and pull requests.
+- Read `CONTRIBUTING.md` before opening a pull request.
+- Read `SECURITY.md` before reporting a security problem.
+
+## Roadmap
+
+- [x] Local Docker environment and automatic database migrations
+- [x] Asynchronous search jobs and results history
+- [x] CI, dependency monitoring, and static security analysis
+- [ ] Authenticated users and role-based access control
+- [ ] Auditable data retention/deletion controls
+- [ ] Production monitoring, backups, and deployment documentation
+- [ ] Expanded test coverage and collector reliability metrics
+
+## License
+
+This project is licensed under the MIT License. See `LICENSE`.

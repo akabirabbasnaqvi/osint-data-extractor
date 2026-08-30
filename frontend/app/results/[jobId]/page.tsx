@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Download } from "lucide-react";
 import { getResults } from "@/lib/api";
 import { OUTPUT_CATEGORIES } from "@/lib/fields";
@@ -11,7 +12,8 @@ import { ResultCard } from "@/components/ResultCard";
 
 const POLL_INTERVAL_MS = 2500;
 
-export default function ResultsPage({ params }: { params: { jobId: string } }) {
+export default function ResultsPage() {
+  const { jobId } = useParams<{ jobId: string }>();
   const [job, setJob] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +23,7 @@ export default function ResultsPage({ params }: { params: { jobId: string } }) {
 
     async function poll() {
       try {
-        const data = await getResults(params.jobId);
+        const data = await getResults(jobId);
         if (cancelled) return;
         setJob(data);
         setError(null);
@@ -38,7 +40,7 @@ export default function ResultsPage({ params }: { params: { jobId: string } }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [params.jobId]);
+  }, [jobId]);
 
   function downloadJson() {
     if (!job) return;
@@ -62,7 +64,7 @@ export default function ResultsPage({ params }: { params: { jobId: string } }) {
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
         <div>
-          <p className="font-mono text-[11px] text-muted-foreground">job / {params.jobId}</p>
+          <p className="font-mono text-[11px] text-muted-foreground">job / {jobId}</p>
           <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight">Search results</h1>
         </div>
         <div className="flex items-center gap-3">
