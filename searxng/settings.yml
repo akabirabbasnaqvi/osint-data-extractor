@@ -1,0 +1,48 @@
+# SearxNG config for this project's self-hosted discovery instance.
+# `use_default_settings: true` merges these overrides on top of
+# SearxNG's built-in defaults, so we only need to specify what we're
+# changing — not the entire settings file.
+use_default_settings: true
+
+server:
+  # Any random string works for local/self-hosted use — SearxNG just
+  # refuses to start with the placeholder default. Generate a proper
+  # random value before deploying this publicly (Phase 5).
+  secret_key: "change-this-to-a-random-string-before-deploying"
+  # Disables SearxNG's bot/rate-limit detection, which is designed to
+  # block automated (non-browser) requests. We WANT automated requests
+  # here — our own backend is the only client, on a private internal
+  # Docker network, not exposed to the public.
+  limiter: false
+
+search:
+  formats:
+    - html
+    - json
+
+# Disable engines that will never usefully answer our kind of query:
+# Wikipedia/Wikidata treat the whole query as an encyclopedia article
+# title and error out on `site:`/boolean syntax; ahmia/torch are dark-web
+# search engines, irrelevant here; "google cse" is a template engine
+# meant to be configured with your own Google credentials (which is
+# exactly what we moved away from) and errors without them.
+engines:
+  - name: wikipedia
+    disabled: true
+  - name: wikidata
+    disabled: true
+  - name: ahmia
+    disabled: true
+  - name: torch
+    disabled: true
+  - name: google cse
+    disabled: true
+  # Explicitly enabled: testing showed the default engine set for
+  # general search only included DuckDuckGo/Brave/Startpage, all three
+  # of which are currently unreliable for us (DuckDuckGo CAPTCHAs every
+  # request outright; Brave/Startpage rate-limit under load). Google
+  # and Bing are more tolerant of moderate automated traffic.
+  - name: google
+    disabled: false
+  - name: bing
+    disabled: false

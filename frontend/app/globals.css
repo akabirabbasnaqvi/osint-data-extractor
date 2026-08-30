@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    @apply bg-accent/30 text-foreground;
+  }
+}
+
+@layer components {
+  /* Small reusable primitives shared by hand-built form/card
+     components, kept here instead of a component library so the whole
+     visual language stays consistent and lightweight. */
+  .input-base {
+    @apply w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-foreground
+      placeholder:text-muted-foreground outline-none transition-colors
+      focus:border-accent/60 focus:ring-1 focus:ring-accent/40;
+  }
+  .card-base {
+    @apply rounded-xl border border-border bg-surface;
+  }
+  .label-base {
+    @apply mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-muted;
+  }
+}

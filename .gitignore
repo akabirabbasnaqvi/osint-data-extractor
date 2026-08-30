@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Environment -- keep every local environment file private, while retaining the
+# documented template that new contributors need.
+.env*
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Docker
+*.log
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
