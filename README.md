@@ -6,6 +6,16 @@ consolidated profile. Built entirely on free/open-source tooling.
 
 Reference: `Public Intelligence SaaS_blueprint.pdf` (project blueprint, v1.0).
 
+## Screenshots
+
+### Landing page
+
+![Public Intelligence landing page](docs/images/landing-page.png)
+
+### Search form
+
+![Public Intelligence search form](docs/images/search-form.png)
+
 ## Stack
 
 - **Frontend:** Next.js 14 + React + TypeScript + Tailwind CSS
