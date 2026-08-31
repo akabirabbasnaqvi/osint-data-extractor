@@ -6,6 +6,12 @@ consolidated profile. Built entirely on free/open-source tooling.
 
 Reference: `Public Intelligence SaaS_blueprint.pdf` (project blueprint, v1.0).
 
+## Project website
+
+The GitHub Pages site is a static project showcase. The full application needs a
+separately hosted FastAPI API, Celery worker, Redis, and PostgreSQL database, so it
+cannot run entirely on GitHub Pages.
+
 ## Screenshots
 
 ### Landing page
