@@ -64,9 +64,11 @@ def mark_job_failed(job_id: str, error_msg: str) -> None:
     db = SessionLocal()
     try:
         job = db.query(Job).filter(Job.id == _to_uuid(job_id)).first()
-        if job:
+        # Never overwrite a job that already finished successfully.
+        if job and job.status != "completed":
             job.status = "failed"
             job.error_msg = error_msg
+            job.completed_at = datetime.now(timezone.utc)
             db.commit()
     finally:
         db.close()

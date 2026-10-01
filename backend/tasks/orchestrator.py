@@ -18,7 +18,7 @@ search-engine results.
 from celery import chord
 
 from tasks.celery_app import celery_app
-from tasks.result_writer import mark_job_completed, mark_job_running
+from tasks.result_writer import mark_job_completed, mark_job_failed, mark_job_running
 from tasks.scrapers.company_scraper import scrape_company
 from tasks.scrapers.email_finder import scrape_personal_email, scrape_work_email
 from tasks.scrapers.github_scraper import scrape_github
@@ -41,26 +41,40 @@ TASK_MAP = {
 }
 
 
-@celery_app.task(name="tasks.orchestrator.run_search")
+@celery_app.task(
+    name="tasks.orchestrator.run_search",
+    soft_time_limit=240,  # discovery alone can take ~2 minutes (6 queries + pauses)
+    time_limit=300,
+)
 def run_search(job_id: str, inputs: dict, retrieve: list[str]) -> None:
-    mark_job_running(job_id)
-
     try:
-        discovered = discover_urls(inputs)
-    except Exception:
-        discovered = dict(EMPTY_DISCOVERY)
+        mark_job_running(job_id)
 
-    subtasks = [
-        TASK_MAP[category].s(job_id, inputs, discovered)
-        for category in retrieve
-        if category in TASK_MAP
-    ]
+        try:
+            discovered = discover_urls(inputs)
+        except Exception:
+            discovered = dict(EMPTY_DISCOVERY)
 
-    if not subtasks:
-        merge_results.delay([], job_id=job_id, note=None)
-        return
+        subtasks = [
+            TASK_MAP[category].s(job_id, inputs, discovered)
+            for category in retrieve
+            if category in TASK_MAP
+        ]
 
-    chord(subtasks)(merge_results.s(job_id=job_id, note=None))
+        if not subtasks:
+            merge_results.delay([], job_id=job_id, note=None)
+            return
+
+        # If a fanned-out task is killed (hard time limit, worker crash) the
+        # chord callback never runs -- the error callback marks the job
+        # failed instead of leaving it "running" forever.
+        callback = merge_results.s(job_id=job_id, note=None)
+        callback.on_error(fail_job.s(job_id=job_id))
+        chord(subtasks)(callback)
+    except Exception as exc:
+        # Anything unexpected (DB down, broker error, soft time limit...)
+        # must surface to the user as a failed job, not a stuck spinner.
+        mark_job_failed(job_id, f"Search could not be completed ({type(exc).__name__}).")
 
 
 @celery_app.task(name="tasks.orchestrator.merge_results")
@@ -70,3 +84,11 @@ def merge_results(_task_returns: list, job_id: str, note: str | None = None) -> 
     (the list of each task's return value) is unused — this just
     finalizes the job."""
     mark_job_completed(job_id, note=note)
+
+
+@celery_app.task(name="tasks.orchestrator.fail_job")
+def fail_job(*_celery_error_args, job_id: str) -> None:
+    """Chord error callback. Celery passes differing positional arguments
+    (request/exc/traceback or a task id) depending on version, so they are
+    ignored -- only the job id we bound matters."""
+    mark_job_failed(job_id, "A search step crashed or timed out before finishing.")
