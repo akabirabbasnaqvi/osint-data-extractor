@@ -13,6 +13,7 @@ for it. Guessed addresses are instead stored unverified, at low
 confidence, clearly labeled — the frontend can show that distinction.
 """
 import re
+from urllib.parse import urlparse
 
 import requests
 
@@ -23,13 +24,35 @@ from tasks.scrapers.utils import get
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
+# "logo@2x.png", "sprite@3x.webp", "bundle@1.2.3.js" match the email regex
+# but are asset filenames, not addresses -- ubiquitous in scraped HTML.
+_ASSET_SUFFIXES = (
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".avif",
+    ".css", ".js", ".mjs", ".map", ".json", ".woff", ".woff2", ".ttf", ".eot",
+    ".mp4", ".webm", ".pdf",
+)
+
 
 def _extract_emails(text: str) -> set[str]:
-    return set(EMAIL_REGEX.findall(text))
+    """Unique, lower-cased addresses, with asset filenames filtered out."""
+    return {
+        email.lower()
+        for email in EMAIL_REGEX.findall(text)
+        if not email.lower().endswith(_ASSET_SUFFIXES)
+    }
 
 
 def _clean_domain(website: str) -> str:
-    return (website or "").replace("https://", "").replace("http://", "").strip("/").split("/")[0]
+    """Bare registrable-looking domain from a URL or domain: strips the
+    scheme, path, port and a leading "www." (guessing "jane@www.acme.com"
+    is never right)."""
+    website = (website or "").strip()
+    if not website:
+        return ""
+    if "://" not in website:
+        website = f"//{website}"
+    host = (urlparse(website).hostname or "").lower()
+    return host.removeprefix("www.")
 
 
 def _guess_patterns(full_name: str, domain: str) -> list[str]:
@@ -72,10 +95,12 @@ def scrape_personal_email(job_id: str, inputs: dict, discovered: dict) -> None:
         if inputs.get("personal_email"):
             save_result(job_id, "personal_email", {"email": inputs["personal_email"]}, confidence=1.0)
 
+        seen = {(inputs.get("personal_email") or "").lower()}
         for url in discovered.get("general", [])[:10]:
             resp = get(url)
             if resp is not None:
-                for email in _extract_emails(resp.text):
+                for email in sorted(_extract_emails(resp.text) - seen):
+                    seen.add(email)  # same address on several pages -> one result
                     save_result(job_id, "personal_email", {"email": email}, source_url=url, confidence=0.5)
     except Exception:
         pass
