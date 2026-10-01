@@ -19,7 +19,7 @@ export default function HistoryPage() {
   useEffect(() => {
     listJobs()
       .then(setJobs)
-      .catch(() => setError("Couldn't reach the server. Is the backend running?"));
+      .catch((err) => setError(err instanceof Error ? err.message : "Couldn't load your searches."));
   }, []);
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,10 +51,8 @@ export function SearchForm() {
     formState: { isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), mode: "onSubmit" });
 
-  const filledCount = useMemo(() => {
-    const values = watch();
-    return Object.values(values).filter((v) => v && String(v).trim() !== "").length;
-  }, [watch()]);
+  const watchedValues = watch();
+  const filledCount = Object.values(watchedValues).filter((v) => v && String(v).trim() !== "").length;
 
   function toggleCategory(key: OutputCategory) {
     setSelected((prev) => {
@@ -88,8 +86,10 @@ export function SearchForm() {
         retrieve: Array.from(selected),
       });
       router.push(`/results/${job_id}`);
-    } catch {
-      setSubmitError("Couldn't reach the server. Is the backend running?");
+    } catch (err) {
+      // ApiError messages are already user-readable (validation detail,
+      // rate limit, or "backend not reachable").
+      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
   }
 

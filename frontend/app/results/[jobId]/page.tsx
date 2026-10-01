@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Download } from "lucide-react";
-import { getResults } from "@/lib/api";
+import { ApiError, getResults } from "@/lib/api";
 import { OUTPUT_CATEGORIES } from "@/lib/fields";
 import type { JobStatusResponse } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -30,8 +30,16 @@ export default function ResultsPage() {
         if (data.status === "pending" || data.status === "running") {
           timer = setTimeout(poll, POLL_INTERVAL_MS);
         }
-      } catch {
-        if (!cancelled) setError("Couldn't reach the server. Is the backend running?");
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Couldn't load results.");
+        // A 404 (unknown job) or 400 will never fix itself, so stop. Any
+        // other failure (network blip, 5xx, rate limit) is retried --
+        // previously one transient error froze the page forever.
+        const status = err instanceof ApiError ? err.status : null;
+        if (status !== 404 && status !== 400) {
+          timer = setTimeout(poll, POLL_INTERVAL_MS * 2);
+        }
       }
     }
 
