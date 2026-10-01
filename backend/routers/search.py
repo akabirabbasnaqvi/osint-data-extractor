@@ -1,6 +1,8 @@
 """
 POST /api/search — creates a Job row and enqueues it onto Celery.
 """
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,7 @@ from db import get_db
 from models.job import Job
 from rate_limit import limiter
 from schemas.search_request import SearchRequest
+from session import optional_session_id
 from tasks.orchestrator import run_search
 
 router = APIRouter()
@@ -15,8 +18,14 @@ router = APIRouter()
 
 @router.post("/api/search", status_code=201)
 @limiter.limit("10/minute")
-def create_search(request: Request, payload: SearchRequest, db: Session = Depends(get_db)):
+def create_search(
+    request: Request,
+    payload: SearchRequest,
+    db: Session = Depends(get_db),
+    session_id: Optional[str] = Depends(optional_session_id),
+):
     job = Job(
+        session_id=session_id,
         inputs=payload.inputs.model_dump(exclude_none=True),
         retrieve=payload.retrieve,
         status="pending",
