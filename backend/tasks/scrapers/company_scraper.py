@@ -5,6 +5,8 @@ registration facts (registrar, creation date, country) rather than
 personal contact info — it's a supporting data point, not a primary
 source.
 """
+from urllib.parse import urlparse
+
 import whois
 
 from tasks.celery_app import celery_app
@@ -23,7 +25,10 @@ def scrape_company(job_id: str, inputs: dict, discovered: dict) -> None:
 
         if domain:
             try:
-                w = whois.whois(domain)
+                # The API normalises this to a URL ("https://acme.com");
+                # WHOIS needs the bare hostname.
+                host = urlparse(domain if "://" in domain else f"//{domain}").hostname or domain
+                w = whois.whois(host)
                 data["registrar"] = w.registrar
                 data["creation_date"] = str(w.creation_date) if w.creation_date else None
                 data["country"] = w.country

@@ -12,16 +12,27 @@ from tasks.result_writer import save_result
 
 GITHUB_API = "https://api.github.com"
 USERNAME_FROM_URL = re.compile(r"github\.com/([A-Za-z0-9-]+)")
+# GitHub logins: 1-39 chars, alphanumerics and single hyphens only.
+VALID_USERNAME = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
+# First path segments on github.com that are pages, not user profiles.
+RESERVED_PATHS = {
+    "orgs", "topics", "search", "features", "about", "pricing", "login", "join",
+    "settings", "marketplace", "sponsors", "collections", "trending", "explore",
+}
 
 
 def _extract_username(inputs: dict, discovered: dict) -> str | None:
     if inputs.get("github"):
-        match = USERNAME_FROM_URL.search(inputs["github"])
-        return match.group(1) if match else inputs["github"].strip()
+        raw = inputs["github"].strip()
+        match = USERNAME_FROM_URL.search(raw)
+        candidate = match.group(1) if match else raw.lstrip("@")
+        # Never interpolate unchecked user input into the API path
+        # (e.g. "x/../../repos") -- only accept a real-looking login.
+        return candidate if VALID_USERNAME.fullmatch(candidate) else None
 
     for url in discovered.get("github", []):
         match = USERNAME_FROM_URL.search(url)
-        if match:
+        if match and match.group(1).lower() not in RESERVED_PATHS:
             return match.group(1)
     return None
 
