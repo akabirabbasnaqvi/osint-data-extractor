@@ -5,7 +5,8 @@ services:
       POSTGRES_DB: osint_db
       POSTGRES_USER: osint_user
       POSTGRES_PASSWORD: osint_pass
-    ports: ['5432:5432']
+    # Bound to localhost only: this service uses the default dev password.
+    ports: ['127.0.0.1:5432:5432']
     volumes: [postgres_data:/var/lib/postgresql/data]
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U osint_user -d osint_db']
@@ -15,7 +16,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ['6379:6379']
+    # Bound to localhost only: Redis here has no password.
+    ports: ['127.0.0.1:6379:6379']
 
   searxng:
     image: searxng/searxng:latest
