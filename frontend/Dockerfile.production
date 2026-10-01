@@ -2,7 +2,7 @@ FROM node:20-alpine AS dependencies
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 FROM node:20-alpine AS builder
 
@@ -17,8 +17,14 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Next's standalone server binds to $HOSTNAME, which Docker sets to the
+# container id -- force all interfaces so the published port is reachable.
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+# frontend/public must exist (frontend/public/.gitkeep) or this COPY fails.
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+USER node
 EXPOSE 3000
 CMD ["node", "server.js"]
