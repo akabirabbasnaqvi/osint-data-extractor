@@ -13,20 +13,21 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ResultEntry(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     data: dict[str, Any]
     source_url: Optional[str] = None
     confidence: float
     scraped_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class JobStatusResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     job_id: UUID
     status: str
     progress: int
@@ -35,16 +36,12 @@ class JobStatusResponse(BaseModel):
     error_msg: Optional[str] = None
     results: dict[str, list[ResultEntry]]
 
-    class Config:
-        from_attributes = True
-
 
 class JobSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     job_id: UUID
     status: str
     progress: int
     created_at: datetime
     inputs: dict[str, Any]
-
-    class Config:
-        from_attributes = True
