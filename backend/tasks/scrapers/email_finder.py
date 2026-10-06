@@ -13,9 +13,11 @@ for it. Guessed addresses are instead stored unverified, at low
 confidence, clearly labeled — the frontend can show that distinction.
 """
 import re
+import unicodedata
 from urllib.parse import urlparse
 
 import requests
+from loguru import logger
 
 from config import settings
 from tasks.celery_app import celery_app
@@ -55,8 +57,24 @@ def _clean_domain(website: str) -> str:
     return host.removeprefix("www.")
 
 
+# Honorifics and suffixes that are part of how a name is written, not of the
+# mailbox ("Dr. Jane Doe Jr." -> jane.doe@, never dr..jr.@).
+_NAME_NOISE = {"mr", "mrs", "ms", "miss", "mx", "dr", "prof", "sir", "jr", "sr", "ii", "iii", "iv"}
+
+
+def _mailbox_part(name_part: str) -> str:
+    """ASCII letters/digits only: "José" -> "jose", "O'Brien" -> "obrien".
+    Anything else would produce an address that can never be valid."""
+    ascii_part = unicodedata.normalize("NFKD", name_part).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", ascii_part.lower())
+
+
 def _guess_patterns(full_name: str, domain: str) -> list[str]:
-    parts = full_name.lower().split()
+    parts = [
+        cleaned
+        for raw in full_name.split()
+        if raw.lower().strip(".") not in _NAME_NOISE and (cleaned := _mailbox_part(raw))
+    ]
     if len(parts) < 2 or not domain:
         return []
     first, last = parts[0], parts[-1]
@@ -103,7 +121,7 @@ def scrape_personal_email(job_id: str, inputs: dict, discovered: dict) -> None:
                     seen.add(email)  # same address on several pages -> one result
                     save_result(job_id, "personal_email", {"email": email}, source_url=url, confidence=0.5)
     except Exception:
-        pass
+        logger.exception(f"personal email scraper failed for job {job_id}")
 
 
 @celery_app.task(name="tasks.scrapers.email_work")
@@ -116,14 +134,18 @@ def scrape_work_email(job_id: str, inputs: dict, discovered: dict) -> None:
         full_name = inputs.get("full_name", "")
 
         if domain and full_name:
+            known = {(inputs.get("email") or "").lower()}
             parts = full_name.split()
             if len(parts) >= 2:
                 hunter_email = _hunter_lookup(domain, parts[0], parts[-1])
                 if hunter_email:
+                    known.add(hunter_email.lower())
                     save_result(job_id, "work_email",
                                 {"email": hunter_email, "source": "hunter.io"}, confidence=0.9)
 
             for guess in _guess_patterns(full_name, domain):
+                if guess in known:
+                    continue  # already reported at higher confidence
                 save_result(job_id, "work_email", {"email": guess, "verified": False}, confidence=0.3)
     except Exception:
-        pass
+        logger.exception(f"work email scraper failed for job {job_id}")
