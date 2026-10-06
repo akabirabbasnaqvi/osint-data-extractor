@@ -3,6 +3,10 @@ FROM python:3.11.8-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# The API sits behind a reverse proxy and is only published on 127.0.0.1 (see
+# docker-compose.prod.yml), so trust its X-Forwarded-For. Without this every
+# visitor shares the proxy's IP and therefore one rate-limit bucket.
+ENV FORWARDED_ALLOW_IPS=*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
