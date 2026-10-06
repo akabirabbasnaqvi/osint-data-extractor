@@ -1,18 +1,7 @@
-import os
+import pytest
 
-for _k, _v in {
-    "DATABASE_URL": "postgresql://u:p@localhost/db",
-    "REDIS_URL": "redis://localhost/0",
-    "CELERY_BROKER_URL": "redis://localhost/0",
-    "CELERY_RESULT_BACKEND": "redis://localhost/1",
-    "SECRET_KEY": "test",
-}.items():
-    os.environ.setdefault(_k, _v)
-
-import pytest  # noqa: E402
-
-import tasks.celery_app  # noqa: E402,F401  (must load first: it registers the task modules)
-from tasks.scrapers.github_scraper import _extract_username  # noqa: E402
+import tasks.celery_app  # noqa: F401  (must load first: it registers the task modules)
+from tasks.scrapers.github_scraper import _extract_username
 
 
 @pytest.mark.parametrize(

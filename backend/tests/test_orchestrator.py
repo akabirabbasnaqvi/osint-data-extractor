@@ -1,18 +1,7 @@
-import os
+from unittest.mock import MagicMock
 
-for _k, _v in {
-    "DATABASE_URL": "postgresql://u:p@localhost/db",
-    "REDIS_URL": "redis://localhost/0",
-    "CELERY_BROKER_URL": "redis://localhost/0",
-    "CELERY_RESULT_BACKEND": "redis://localhost/1",
-    "SECRET_KEY": "test",
-}.items():
-    os.environ.setdefault(_k, _v)
-
-from unittest.mock import MagicMock  # noqa: E402
-
-import tasks.celery_app  # noqa: E402,F401  (must load first: it registers the task modules)
-from tasks import orchestrator  # noqa: E402
+import tasks.celery_app  # noqa: F401  (must load first: it registers the task modules)
+from tasks import orchestrator
 
 
 def test_unexpected_error_marks_job_failed(monkeypatch) -> None:
