@@ -18,6 +18,12 @@ celery_app = Celery(
 celery_app.conf.update(
     task_soft_time_limit=120,
     task_time_limit=150,
+    # Tasks run for minutes, so the default prefetch of 4 per slot lets one busy
+    # worker hoard queued searches while others sit idle.
+    worker_prefetch_multiplier=1,
+    # Chord bookkeeping otherwise lingers in Redis for the default 24h.
+    result_expires=3600,
+    broker_connection_retry_on_startup=True,
 )
 
 # Imported at the bottom (after `celery_app` is defined) because every
