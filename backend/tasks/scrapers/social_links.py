@@ -20,24 +20,27 @@ This means these categories return a link to follow up on manually,
 not a scraped profile. That's an intentional product limitation, not a
 bug.
 """
+from loguru import logger
+
 from tasks.celery_app import celery_app
 from tasks.result_writer import save_result
 
 PLATFORM_CONFIG = {
-    "linkedin": {"input_key": "linkedin", "domain": "linkedin.com"},
+    # LinkedIn profiles live under /in/<handle>; the others use /<handle>.
+    "linkedin": {"input_key": "linkedin", "domain": "linkedin.com", "path_prefix": "in/"},
     "facebook": {"input_key": "facebook", "domain": "facebook.com"},
     "instagram": {"input_key": "instagram", "domain": "instagram.com"},
     "twitter": {"input_key": "twitter", "domain": "twitter.com / x.com"},
 }
 
 
-def _normalize_input_url(raw: str, domain: str) -> str:
+def _normalize_input_url(raw: str, domain: str, path_prefix: str = "") -> str:
     raw = raw.strip()
     if raw.startswith("http://") or raw.startswith("https://"):
         return raw
     handle = raw.lstrip("@")
     primary_domain = domain.split(" / ")[0]
-    return f"https://{primary_domain}/{handle}"
+    return f"https://{primary_domain}/{path_prefix}{handle}"
 
 
 def _make_task(category: str):
@@ -47,7 +50,7 @@ def _make_task(category: str):
         try:
             direct_input = inputs.get(config["input_key"])
             if direct_input:
-                url = _normalize_input_url(direct_input, config["domain"])
+                url = _normalize_input_url(direct_input, config["domain"], config.get("path_prefix", ""))
                 save_result(
                     job_id, category,
                     {"url": url, "source": "user-provided"},
@@ -62,7 +65,7 @@ def _make_task(category: str):
                     source_url=url, confidence=0.6,
                 )
         except Exception:
-            pass
+            logger.exception(f"{category} link scraper failed for job {job_id}")
 
     task_fn.__name__ = f"scrape_{category}"
     return celery_app.task(name=f"tasks.scrapers.{category}")(task_fn)
