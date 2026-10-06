@@ -18,7 +18,9 @@ from db import Base  # noqa: E402
 from models import job, result  # noqa: E402,F401  (registers tables on Base.metadata)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# ConfigParser treats "%" as interpolation syntax; a URL-encoded password
+# (e.g. "p%40ss") would otherwise crash the migration.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
