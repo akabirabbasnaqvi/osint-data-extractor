@@ -8,6 +8,7 @@ from the regex pass.
 import re
 
 import phonenumbers
+from loguru import logger
 
 from tasks.celery_app import celery_app
 from tasks.result_writer import save_result
@@ -48,4 +49,4 @@ def scrape_phone(job_id: str, inputs: dict, discovered: dict) -> None:
                 for phone in _extract_phones(resp.text, region):
                     save_result(job_id, "phone", {"phone": phone}, source_url=url, confidence=0.5)
     except Exception:
-        pass
+        logger.exception(f"phone scraper failed for job {job_id}")
