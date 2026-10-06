@@ -28,7 +28,8 @@ export const INPUT_FIELDS: InputFieldDef[] = [
   { key: "email", label: "Email", placeholder: "jane@work.com", icon: Mail, group: "identity" },
   { key: "personal_email", label: "Personal email", placeholder: "jane@gmail.com", icon: Mail, group: "identity" },
   { key: "city", label: "City", placeholder: "Austin", icon: MapPin, group: "identity" },
-  { key: "country", label: "Country", placeholder: "United States", icon: Flag, group: "identity" },
+  // Only a 2-letter ISO code is usable as a phone-number region hint.
+  { key: "country", label: "Country code", placeholder: "US", icon: Flag, group: "identity" },
 
   { key: "linkedin", label: "LinkedIn", placeholder: "linkedin.com/in/janedoe", icon: Linkedin, group: "handles" },
   { key: "github", label: "GitHub", placeholder: "janedoe", icon: Github, group: "handles" },
