@@ -82,17 +82,23 @@ def build_dorks(inputs: dict) -> list[tuple[str, str]]:
     return dorks
 
 
+def _host_matches(host: str, domain: str) -> bool:
+    """True for the domain itself or any subdomain of it -- never a lookalike
+    such as "notgithub.com" or "linkedin.com.evil.io"."""
+    return host == domain or host.endswith(f".{domain}")
+
+
 def _classify(url: str) -> str:
-    host = urlparse(url).netloc.lower()
-    if "linkedin.com" in host:
+    host = (urlparse(url).hostname or "").lower()
+    if _host_matches(host, "linkedin.com"):
         return "linkedin"
-    if "facebook.com" in host:
+    if _host_matches(host, "facebook.com"):
         return "facebook"
-    if "twitter.com" in host or host == "x.com":
+    if _host_matches(host, "twitter.com") or _host_matches(host, "x.com"):
         return "twitter"
-    if "instagram.com" in host:
+    if _host_matches(host, "instagram.com"):
         return "instagram"
-    if "github.com" in host:
+    if _host_matches(host, "github.com"):
         return "github"
     return "general"
 
@@ -163,7 +169,12 @@ def discover_urls(inputs: dict, max_dorks: int = 6) -> dict[str, list[str]]:
 
         for result in raw_results:
             url = result.get("url")
-            if not url or not _is_relevant(identity, result):
+            # Search results are third-party data: keep only real web links
+            # (never javascript:, data:, file: ...), since they are rendered
+            # as clickable links and fetched by later scrapers.
+            if not url or urlparse(url).scheme not in {"http", "https"}:
+                continue
+            if not _is_relevant(identity, result):
                 continue
             bucket = _classify(url)
             if url not in discovered[bucket]:
