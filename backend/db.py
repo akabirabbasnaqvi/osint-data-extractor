@@ -8,7 +8,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from config import settings
 
-engine = create_engine(settings.database_url)
+# pool_pre_ping: a Postgres restart or idle-connection drop would otherwise
+# surface as one failed request / task per stale pooled connection.
+engine = create_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
