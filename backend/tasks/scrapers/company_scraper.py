@@ -8,6 +8,7 @@ source.
 from urllib.parse import urlparse
 
 import whois
+from loguru import logger
 
 from tasks.celery_app import celery_app
 from tasks.result_writer import save_result
@@ -40,4 +41,4 @@ def scrape_company(job_id: str, inputs: dict, discovered: dict) -> None:
 
         save_result(job_id, "company", data, confidence=0.8)
     except Exception:
-        pass
+        logger.exception(f"company scraper failed for job {job_id}")
