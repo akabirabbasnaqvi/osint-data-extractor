@@ -58,7 +58,8 @@ export default function ResultsPage() {
     a.href = url;
     a.download = `search-${job.job_id}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    // Revoking synchronously can cancel the download in some browsers.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   const categoriesWithResults = OUTPUT_CATEGORIES.filter((c) => (job?.results[c.key]?.length ?? 0) > 0);
