@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     env_file: .env.production
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -15,11 +16,16 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     command: redis-server --appendonly yes
     volumes: [redis_data:/data]
 
   searxng:
     image: searxng/searxng:latest
+    restart: unless-stopped
+    environment:
+      # Overrides server.secret_key from settings.yml (which is only a dev placeholder).
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?set SEARXNG_SECRET in .env.production}
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
 
@@ -37,8 +43,15 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.production
+    restart: unless-stopped
     env_file: .env.production
     ports: ['127.0.0.1:8000:8000']
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -47,6 +60,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.production
+    restart: unless-stopped
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=4
     env_file: .env.production
     depends_on:
@@ -61,6 +75,7 @@ services:
       dockerfile: Dockerfile.production
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
     ports: ['127.0.0.1:3000:3000']
     depends_on: [backend]
 
