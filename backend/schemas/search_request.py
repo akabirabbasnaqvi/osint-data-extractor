@@ -9,6 +9,7 @@ domain like "acme.com", a path like "linkedin.com/in/janedoe", or an
 "@handle") are accepted instead of being rejected as "not http/https".
 """
 import ipaddress
+import re
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -16,14 +17,19 @@ from pydantic import BaseModel, ValidationInfo, field_validator
 
 MAX_FIELD_LENGTH = 200
 
-SOCIAL_URL_FIELDS = ("linkedin", "facebook", "instagram")
+SOCIAL_URL_FIELDS = ("linkedin", "facebook", "instagram", "twitter", "github")
 WEBSITE_FIELDS = ("company_website",)
 
+
+# What a bare handle may look like: "@janedoe", "jane.doe", "jane-doe_1".
+HANDLE_PATTERN = re.compile(r"^@?[A-Za-z0-9._-]{1,100}$")
 
 SOCIAL_DOMAINS = {
     "linkedin": "linkedin.com",
     "facebook": "facebook.com",
     "instagram": "instagram.com",
+    "twitter": "twitter.com",
+    "github": "github.com",
 }
 
 
@@ -87,7 +93,11 @@ class SearchInputs(BaseModel):
     @classmethod
     def social_url_or_handle(cls, value: Optional[str], info: ValidationInfo) -> Optional[str]:
         """Accept a handle ("@jane") or a URL with or without a scheme."""
-        if not value or _is_handle(value, SOCIAL_DOMAINS[info.field_name]):
+        if not value:
+            return value
+        if _is_handle(value, SOCIAL_DOMAINS[info.field_name]):
+            if not HANDLE_PATTERN.fullmatch(value):
+                raise ValueError("Enter a username (like @janedoe) or a profile URL")
             return value
         value = _ensure_scheme(value)
         _reject_non_public_host(value)
