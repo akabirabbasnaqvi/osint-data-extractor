@@ -4,7 +4,7 @@ user submits. Mirrors blueprint Section 7.
 """
 import uuid
 
-from sqlalchemy import Column, String, Integer, DateTime, Text
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.sql import func
 
@@ -13,6 +13,9 @@ from db import Base
 
 class Job(Base):
     __tablename__ = "jobs"
+    # Declared here as well as in migration 0001, so that
+    # `alembic revision --autogenerate` does not try to drop it.
+    __table_args__ = (Index("idx_jobs_session", "session_id"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(String(64), nullable=True)
