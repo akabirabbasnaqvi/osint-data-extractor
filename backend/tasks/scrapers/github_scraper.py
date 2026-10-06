@@ -6,12 +6,14 @@ fine for one profile lookup per job.
 import re
 
 import requests
+from loguru import logger
 
 from tasks.celery_app import celery_app
 from tasks.result_writer import save_result
 
 GITHUB_API = "https://api.github.com"
-USERNAME_FROM_URL = re.compile(r"github\.com/([A-Za-z0-9-]+)")
+# Anchored so lookalike hosts such as "notgithub.com/x" never match.
+USERNAME_FROM_URL = re.compile(r"(?:^|//|\.)github\.com/([A-Za-z0-9-]+)")
 # GitHub logins: 1-39 chars, alphanumerics and single hyphens only.
 VALID_USERNAME = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 # First path segments on github.com that are pages, not user profiles.
@@ -65,5 +67,6 @@ def scrape_github(job_id: str, inputs: dict, discovered: dict) -> None:
         save_result(job_id, "github", data, source_url=profile.get("html_url"), confidence=0.95)
     except Exception:
         # Per blueprint 9.2: a scraper failure must not crash the job —
-        # it just contributes no data for this category.
-        pass
+        # it just contributes no data for this category. Log it so a
+        # silently empty result can still be diagnosed.
+        logger.exception(f"github scraper failed for job {job_id}")
