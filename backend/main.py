@@ -2,13 +2,16 @@
 FastAPI application entry point: wires up rate limiting, CORS, the
 /api/search and /api/results routers, and a health check.
 """
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from config import settings
+from db import get_db
 from rate_limit import limiter
 from routers import search, results
 
@@ -34,3 +37,14 @@ app.include_router(results.router, tags=["results"])
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/health/ready")
+def readiness_check(db: Session = Depends(get_db)):
+    """Like /api/health, but also proves the database is reachable, so a load
+    balancer or orchestrator can stop routing to an instance that cannot work."""
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return {"status": "ready"}
