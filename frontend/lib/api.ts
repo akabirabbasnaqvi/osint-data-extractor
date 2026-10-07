@@ -93,3 +93,8 @@ export function getResults(jobId: string): Promise<JobStatusResponse> {
 export function listJobs(): Promise<JobSummary[]> {
   return request(() => client.get<JobSummary[]>("/api/jobs"));
 }
+
+/** Permanently deletes one of the caller's searches and all of its results. */
+export function deleteJob(jobId: string): Promise<void> {
+  return request(() => client.delete<void>(`/api/jobs/${jobId}`));
+}
