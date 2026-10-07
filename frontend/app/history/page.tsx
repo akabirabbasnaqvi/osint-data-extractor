@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Inbox } from "lucide-react";
-import { listJobs } from "@/lib/api";
+import { ArrowRight, Inbox, Trash2 } from "lucide-react";
+import { deleteJob, listJobs } from "@/lib/api";
 import type { JobSummary } from "@/lib/types";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -21,6 +21,17 @@ export default function HistoryPage() {
       .then(setJobs)
       .catch((err) => setError(err instanceof Error ? err.message : "Couldn't load your searches."));
   }, []);
+
+  async function handleDelete(jobId: string) {
+    if (!window.confirm("Delete this search and its results? This cannot be undone.")) return;
+    try {
+      await deleteJob(jobId);
+      setJobs((current) => current?.filter((job) => job.job_id !== jobId) ?? null);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't delete that search.");
+    }
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-14">
@@ -41,10 +52,10 @@ export default function HistoryPage() {
 
       <ul className="mt-8 divide-y divide-border overflow-hidden rounded-xl border border-border">
         {jobs?.map((job) => (
-          <li key={job.job_id}>
+          <li key={job.job_id} className="flex items-stretch bg-surface transition-colors hover:bg-surface-raised">
             <Link
               href={`/results/${job.job_id}`}
-              className="group flex items-center justify-between gap-4 bg-surface px-5 py-4 transition-colors hover:bg-surface-raised"
+              className="group flex min-w-0 flex-1 items-center justify-between gap-4 py-4 pl-5 pr-3"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm text-foreground">{summarize(job.inputs)}</p>
@@ -57,6 +68,15 @@ export default function HistoryPage() {
                 <ArrowRight size={14} className="text-muted-foreground transition-transform group-hover:translate-x-0.5" />
               </div>
             </Link>
+            <button
+              type="button"
+              onClick={() => handleDelete(job.job_id)}
+              aria-label="Delete this search"
+              title="Delete this search"
+              className="px-4 text-muted-foreground transition-colors hover:text-signal-low"
+            >
+              <Trash2 size={15} />
+            </button>
           </li>
         ))}
       </ul>
