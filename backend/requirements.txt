@@ -22,8 +22,6 @@ slowapi==0.1.9
 
 # --- Scraping (Phase 3a: no-browser scrapers) ---
 requests==2.34.2
-beautifulsoup4==4.12.3
-lxml==6.1.0
 fake-useragent==1.5.1
 phonenumbers==8.13.44
 python-whois==0.9.4
