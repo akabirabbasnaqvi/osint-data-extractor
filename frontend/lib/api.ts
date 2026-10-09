@@ -6,12 +6,17 @@ const SESSION_KEY = "pi_session_id";
 
 const client = axios.create({ baseURL: API_URL, timeout: 20000 });
 
+// Used when localStorage is unavailable (private mode, blocked storage). It must
+// be created once and reused: a new id per request would make every job look
+// like it belongs to somebody else, so results and history would 404.
+let inMemorySessionId: string | null = null;
+
 /**
- * Anonymous per-browser id sent as X-Session-ID so the backend only lists
- * and deletes this visitor's own searches. Falls back to a throw-away id
- * when localStorage is unavailable (SSR, private mode).
+ * Anonymous per-browser id sent as X-Session-ID so the backend only lists,
+ * reads and deletes this visitor's own searches. Falls back to an id kept in
+ * memory (stable until the page reloads) when localStorage is unavailable.
  */
-function getSessionId(): string {
+export function getSessionId(): string {
   const generate = () =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -19,12 +24,13 @@ function getSessionId(): string {
   try {
     let id = window.localStorage.getItem(SESSION_KEY);
     if (!id) {
-      id = generate();
+      id = inMemorySessionId ?? generate();
       window.localStorage.setItem(SESSION_KEY, id);
     }
     return id;
   } catch {
-    return generate();
+    inMemorySessionId ??= generate();
+    return inMemorySessionId;
   }
 }
 
